@@ -1,0 +1,440 @@
+---
+title: 'Module III. Statistical Inference. Power analysis. Part 2.'
+author: "Julia Ponomarenko, CRG Bioinformatics core facility."
+date: "June 6, 2017"
+output:
+  html_document:
+    toc: true
+    toc_depth: 4
+    theme: readable
+---
+
+```{r}
+# install.packages("MASS") - run this code if you do not have MASS package
+library(MASS)
+```
+<br/>
+
+Sample size for estimating the population mean and proportion
+--------------------------
+#### How the sample size affects the confidence interval 
+or How to choose the sample size _n_ to obtain the margin of error _m_ for a population mean _mu_ at a desired confidence level. 
+
+__Assumptions__: The population has the _N(mu,sigma)_ (normal) distribution with known mean and variance.
+
+__Formula__: The sample mean _x'_  from the _N(mu,sigma)_ distribution has a normal distribution _N(mu,sigma/sqrt(n))_.   
+A level _C_ confidence interval for a population mean _mu_ is _[x' - m; x' + m ]_, where _x'_ is a sample mean.   
+The margin of error for _mu_ is _m = z*sigma/sqrt(n)_, where z is a critical value for the z distribution _N(0,1)_ such that the area between -z and z is equal to _C_.
+  
+C = 90%    z = 1.645  
+C = 95%    z = 1.960  
+C = 99%    z = 2.576  
+  
+  <br/>
+How to obtain z at a specified C:
+```{r}
+C <- 0.5
+qnorm(C) #gives a value z such that P(X < z) = C
+
+#to find z for the interval in between -z and z
+C <- 0.9
+qnorm(C + (1-C)/2) #gives a value of z such that P(-z < X < z) = C
+```
+  
+<br/>  
+__Q1.1.__ Find the critical values -z and z for the area under the standard normal curve of 99.99%
+```{r, echo=FALSE}
+C <- 0.9999
+z <- qnorm(C + (1-C)/2) #gives a value of z such that P(-z < X < z) = C
+```
+  
+<br/>  
+__Q1.2.__ The average credit card balance for a random sample of 1200 graduates was $3173, with the median of $1645 and sigma of $3500.
+Is this sample comes from the normal distribution?
+```{r, echo=FALSE}
+#No. Since the median is smaller than the mean, the distribution is right-skewed. That is it has a long right tail, which is expected as the majority of students would have small debts and a few very large.
+#Despite the skewness, the sample mean is normally distributed.
+```
+
+<br/>
+#### How to compute the 95% confidence interval for the population mean 
+```{r}
+z <- qnorm(0.975) 
+sigma <- 3500
+n <- 1200
+m <- z*sigma/sqrt(n) #margin of error 
+
+sample_mean <- 3173
+left_interval <- sample_mean - m
+right_interval <- sample_mean + m
+```
+The 95% confidence interval for the average (mean) credit card debt for all graduates is between $2975 and $3371.  
+
+Let's draw it on a graph.
+```{r eval=FALSE}
+plot(sample_mean,2,xlim=c(2500,4000),ylim=c(0,12),axes=F)
+axis(1) 
+segments(left_interval, 2, right_interval, 2, lwd=4)
+```
+
+<br/>
+__Q1.3.__ Compute and draw the 90%, 99% and 99.9% confidence intervals for the population mean from the sample of Q2. How does the interval change when confidence increases?
+```{r eval=FALSE}
+sample_mean <- 3173 
+sigma <- 3500
+n <- 1200
+
+m90 <- qnorm(0.95) * sigma/sqrt(n) #margin of error for the 90% confidence interval
+m99 <- qnorm(0.995) * sigma/sqrt(n) #margin of error for the 99% confidence interval
+m999 <- qnorm(0.9995) * sigma/sqrt(n) #margin of error for the 99.9% confidence interval
+
+left_interval <- sample_mean - m90
+right_interval <- sample_mean + m90
+y <- 1
+points(sample_mean, y)
+segments(left_interval, y, right_interval, y, lwd=4)
+
+left_interval <- sample_mean - m99
+right_interval <- sample_mean + m99
+y <- 3
+points(sample_mean, y)
+segments(left_interval, y, right_interval, y, lwd=4)
+
+left_interval <- sample_mean - m999
+right_interval <- sample_mean + m999
+y <- 4
+points(sample_mean, y)
+segments(left_interval, y, right_interval, y, lwd=4)
+
+```
+<br/>  
+__Q1.4.__ Compute and draw the 90%, 95%, 99% and 99.9% confidence interval for the population mean from the sample of Q2, but with n=300. How do the intervals change in comparison with n=1200?
+```{r eval=FALSE}
+sample_mean <- 3173 
+sigma <- 3500
+n <- 300
+
+m90 <- qnorm(0.95) * sigma/sqrt(n) #margin of error for the 90% confidence interval
+m95 <- qnorm(0.975) * sigma/sqrt(n) #margin of error for the 95% confidence interval
+m99 <- qnorm(0.995) * sigma/sqrt(n) #margin of error for the 99% confidence interval
+m999 <- qnorm(0.9995) * sigma/sqrt(n) #margin of error for the 99.9% confidence interval
+
+left_interval <- sample_mean - m90
+right_interval <- sample_mean + m90
+y <- 5
+points(sample_mean, y)
+segments(left_interval, y, right_interval, y, lwd=4, col="red")
+
+left_interval <- sample_mean - m95
+right_interval <- sample_mean + m95
+y <- 6
+points(sample_mean, y)
+segments(left_interval, y, right_interval, y, lwd=4, col="red")
+
+left_interval <- sample_mean - m99
+right_interval <- sample_mean + m99
+y <- 7
+points(sample_mean, y)
+segments(left_interval, y, right_interval, y, lwd=4, col="red")
+
+left_interval <- sample_mean - m999
+right_interval <- sample_mean + m999
+y <- 8
+points(sample_mean, y)
+segments(left_interval, y, right_interval, y, lwd=4, col="red")
+```
+<br/>
+__Q1.5.__ Compute the 90%, 95%, 99%, and 99.9% confidence intervals for the population mean from the sample of Q2, but with smaller sigma=$2000, n=1200.
+```{r eval=FALSE}
+sample_mean <- 3173 
+sigma <- 2000
+n <- 1200
+
+m90 <- qnorm(0.95) * sigma/sqrt(n) #margin of error for the 90% confidence interval
+m95 <- qnorm(0.975) * sigma/sqrt(n) #margin of error for the 95% confidence interval
+m99 <- qnorm(0.995) * sigma/sqrt(n) #margin of error for the 99% confidence interval
+m999 <- qnorm(0.9995) * sigma/sqrt(n) #margin of error for the 99.9% confidence interval
+
+left_interval <- sample_mean - m90
+right_interval <- sample_mean + m90
+y <- 9
+points(sample_mean, y)
+segments(left_interval, y, right_interval, y, lwd=4, col="blue")
+
+left_interval <- sample_mean - m95
+right_interval <- sample_mean + m95
+y <- 10
+points(sample_mean, y)
+segments(left_interval, y, right_interval, y, lwd=4, col="blue")
+
+left_interval <- sample_mean - m99
+right_interval <- sample_mean + m99
+y <- 11
+points(sample_mean, y)
+segments(left_interval, y, right_interval, y, lwd=4, col="blue")
+
+left_interval <- sample_mean - m999
+right_interval <- sample_mean + m999
+y <- 12
+points(sample_mean, y)
+segments(left_interval, y, right_interval, y, lwd=4, col="blue")
+```
+  
+<br/>
+  
+__Other things being equal, the margin of error of a confidence interval decreases as__
+<br/>* the confidence level _C_ decreases,
+<br/>* the sample size _n_ increases, and
+<br/>* the population standard deviation _sigma_ decreases.
+
+<br/>
+  
+__How to lower the margin of error of the population mean? The choices are:__ 
+<br/>* Lower the level of confidence _C_.
+<br/>* Increase the sample size _n_.
+<br/>* Reduce the population variance _sigma_.
+  
+  
+<br/>    
+    
+__Q1.6.__ If we are designing the survey for the estimation of the average credit card debt among graduates as in Q2 (sigma = $3500) and want the margin of error to be $150 with 95% confidence, what sample size _n_ do we need?
+```{r}
+sigma <- 3500
+m <- 150
+z <- qnorm(0.975)
+
+n <- (z * sigma / m) ^2
+```
+  
+  
+<br/>
+__If the population standard deviation _sigma_ is unknown (which is usually the case), for a large sample (n > 40), the sample standard deviation _s_ can be used to approximate _sigma_. __ For a small sample, the bootsrap procedure (resampling with replacement) can be used.
+
+<br/>
+
+### Proportions. How to choose the sample size _n_ to obtain the margin of error _m_ for a population proportion _p_ at a desired level _C_ confidence interval _[p-m; p+m]_. 
+
+__Assumptions__: When _n_ is large, sample proportion _p'_ has a Normal distribution with mean _p_ and standard deviation _sqrt(p(1-p)/n)_. 
+
+__Formula__: _n = (z/m)^2 *p(1-p)_ where _p_ is a guessed value for the proportion. The margin of error _m_ is the largest when _p=0.5_, therefore it can be used to obtain a very conservative estimation of the sample size (larger than might be needed).
+<br/>
+__Q1.7.__ You design a survey assessing the proportion of people satisfied versus unsatisfied with some organizational policy. At 95% confidence and a margin of error <= 5% find the required sample size _n_ (always round up _n_). 
+```{r}
+p <- 0.5
+m <- 0.05
+z <- qnorm(0.975)
+
+n <- (z/m)^2 * p * (1-p)
+```
+  
+<br/>  
+__Q1.8.__ Find _n_ at _m <= 3%_ and _m <= 1%_.
+  
+<br/>  
+__Q1.9.__ In the above problem, how will _n_ change if a preliminary study gave _p'=0.2_ and we want _m <= 5%_?
+  
+  
+<br/>
+__Q1.10.__ Build a graph showing how the margin error of a 95% confidence interval _m_ depends on _p_ at different _n_.
+```{r}
+z <- qnorm(0.975)
+p <- c(0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1)
+
+n <- 50
+m <-  z * sqrt(p*(1-p)/n) 
+plot(p,m, xlim=c(0,1.0), ylim=c(0,0.15), axes=F)
+axis(1, at = seq(0, 1.1, by = 0.1))
+axis(2, at = seq(0, 0.15, by = 0.01))
+lines(p,m, lwd=4)
+
+n <- 100
+m <-  z * sqrt(p*(1-p)/n) 
+lines(p,m, lwd=4, col="red")
+
+n <- 200
+m <-  z * sqrt(p*(1-p)/n) 
+lines(p,m, lwd=4, col="blue")
+
+n <- 500
+m <-  z * sqrt(p*(1-p)/n) 
+lines(p,m, lwd=4, col="darkgreen")
+
+n <- 2000
+m <-  z * sqrt(p*(1-p)/n) 
+lines(p,m, lwd=4, col="magenta")
+
+```
+
+<br/>
+
+Power of tests
+--------------------------
+### Types of errors
+<br/>
+__Type I error occures when we reject H0 when in fact it is true.__ Type I error rate, alpha (or significance level), is a probability to reject H0 when it is true. 
+<br/><br/>
+__Type II error occures is when we do not reject H0 when in fact it is false.__ Type II error rate, beta, is a probability to fail to reject H0 when it is not true. 
+<br/><br/>
+__Power = 1 - beta.__ The power of the test to detect Ha is the probability that a fixed level alpha significance test will reject H0 when Ha is true.   
+<br/>
+__The power of a statistical test measures its ability to detect deviations from the null hypothesis.   __
+<br/>
+__In practice, the test is performed to show that H0 is false, so high (>80%) power is important.__
+  
+<br/>  
+"What we actually call type I or type II error depends directly on the null hypothesis. Negation of the null hypothesis causes type I and type II errors to switch roles.  The goal of the test is to determine if the null hypothesis can be rejected. A statistical test can either reject or fail to reject a null hypothesis, but never prove it true." (Wikipedia)
+  
+  
+<br/>
+
+### Power of the one-sample t test
+
+Reminder: One-sample t test is used for inference about the population mean _mu_ based on the sample mean _x'_, assuming that the distribution is normal and its standard deviation _sigma_ is known or can be estimated from the sample standard deviation _s_. Two-sample t test is used for inference about difference in two populaions means.  
+<br/>
+If n >= 40, the t test is suitable even for skewed distributions.  
+If n >=15, no outliers and slight skewedness are acceptable.  
+If n < 15, t test can be used for a normally distributed data with no outliers.  
+  
+<br/>  
+__Q2.1.__ The effect of a treatment was tested on 20 subjects (some parameter W was measured before and after treatment). Its average difference was  x' = 2.43 and standard deviation was s = 1.46 (for a safe estimate it is recommended to round it up, let's take s = 1.5).   
+The hypothesis to test is H0: mu = 0. Ha: mu > 0 WHEN THE ALTERNATIVE is mu=1.0. At alpha = 0.05.  
+<br/>
+The t test with n observations rejects H0 at the 5% significance level if the t statistic _t = ( x' - 0) / (s/sqrt(n))_ exceeds the critical value for the t-distribution at df=19 (= n-1).
+```{r}
+qt(c(0.25, .975), df=19) # two-sided
+t <- abs(qt(0.95,df=19)) # one-sided
+t
+```
+  <br/>
+The event that the test rejects H0 happens when _x' / (s / sqrt(n) ) >= t_.
+```{r}
+n <- 20
+s <- 1.5
+x <- t*s/sqrt(n)
+```
+<br/>
+The power is a probability that x' >= x when mu = 1.0.
+P( [ (x'-1.0) /1.5/sqrt(20)] >= [ (x-1.0) /1.5/sqrt(20) ] ) = P( Z >= -1.25 )
+```{r}
+power <- 1 - pnorm(-1.25)
+power
+```
+This is the power that we will detect an increase in the measured parameter W of 1.0.
+  
+  <br/>
+__Q2.2.__ If the sample size is increased at n=100, what will be the power of the test to detect an alternative increase of W of 1.0 (same as in Q2.1)?
+```{r}
+n <- 100
+t <- abs(qt(0.95,df=n-1)) # one-sided
+s <- 1.5
+x <- t*s/sqrt(n)
+muu <- 1.0
+z <- (x - muu) / ( s / sqrt(n))
+power <- 1 - pnorm(z)
+
+```
+  
+<br/>  
+__Q2.3.__ With n=100 at 5% of significance level and power of 95%, what increase of the parameter W can be detected? 
+```{r}
+power <- 0.95
+z <- qnorm(1 - power)
+
+muu <- x - z * (s / sqrt(n))
+```
+  
+<br/>  
+
+### Power of the two-sample t test
+
+__Q2.4.__ The experiment was carried out to study if calcium intake reduced blood pressure. The calcium treated group consisted of n1=10 subjects, with measurements for the average dicrease in blood pressure x1=5.000, s1=8.743. The placebo group: n2=11, x2=-0.273, s2=5.901. Both samples satisfied normal distribution and had no outliers (the assumptions to carry out the t-test for n < 15). The pooled sample standard deviation was s = 7.385. The P-value was 0.059, meaning that there was no enough evidence to reject the null hypothesis that calcium intake did not lower blood pressure.  
+
+Now a new experiment is planned that would provide convincing evidence for calcium intake, at the 1% of significance level for the alternative difference in means of 5.0. Sizes of both groups have been increased to 45: n1=45, n2=45. What is the power of this test?
+
+```{r}
+n1 <- 45
+n2 <- 45
+s <- 7.385 #the pooled sample standard deviation
+muu <- 5.0 #the alternative difference in means
+df <- n1 + n2 - 2 # the degrees of freedom
+alpha <- 0.01
+
+delta <- muu / (s * sqrt( (1/n1) + (1/n2) )) # the non-centrality parameter
+t <- abs(qt(1 - alpha, df=df)) # one-sided critical value of t distribution
+
+power <- 1 - pt(t, df, delta)
+```
+<br/>
+__Q2.5.__ How would the power of the above test change at the 5% of significance and reduced size of groups, n1 = n2 = 30?
+```{r, echo=FALSE}
+n1 <- 30
+n2 <- 30
+s <- 7.385
+muu <- 5.0
+df <- n1 + n2 - 2 # the degrees of freedom
+alpha <- 0.05
+
+delta <- muu / (s * sqrt( (1/n1) + (1/n2) )) # the non-centrality parameter
+t <- abs(qt(1 - alpha, df=df)) # one-sided critical value of t distribution
+
+power <- 1 - pt(t, df, delta)
+power
+```
+
+  
+<br/>  
+
+### Calculating power using the package "pwr"   
+(from http://www.ats.ucla.edu/stat/r/dae/t_test_power3.htm)
+<br/>
+__Q2.6.__ "A company markets an eight week long weight loss program and claims that at the end of the program on average a participant will have lost 5 pounds. On the other hand, you have studied the program and you believe that their program is scientifically unsound and shouldn't work at all. With some limited funding at hand, you want test the hypothesis that the weight loss program does not help people lose weight. Your plan is to get a random sample of people and put them on the program. You will measure their weight at the beginning of the program and then measure their weight again at the end of the program.  Based on some previous research, you believe that the standard deviation of the weight difference over eight weeks will be 5 pounds. You now want to know how many people you should enroll in the program to test your hypothesis. "
+
+```{r}
+#install.packages("pwr")
+library(pwr)
+
+mu_0 <- 0 # mu for H0
+mu_a <- 5 # mu for Ha
+s <- 5 # standard deviation for the difference in means
+power <- 0.8
+alpha <- 0.05
+
+d <- (mu_0 - mu_a) / s # this is the standard effect size
+
+#calculates sample size n
+test <- pwr.t.test(d=d,power=power,sig.level=alpha,type="paired",alternative="two.sided")
+test
+#n is
+test$n
+
+#calculates power for a given sample size n
+n <- 35
+test <- pwr.t.test(d=d,n=n,sig.level=alpha,type="paired",alternative="two.sided")
+#power
+test$power
+```
+  
+<br/>  
+__Q2.7.__ For the above experiment, calculate _n_ for power = 0.95, s = 10 and alpha=0.00001
+  
+  
+<br/>
+__Q2.8.__ For the above experiment, draw power curves (power vs. effect size) for different n = (5,15,25,35,45).
+```{r}
+n <- seq(5, 50, by=10)
+alpha <- 0.05
+ds <- seq(0, 1, length.out=10)     # effect sizes d for t-Test
+
+get_power <- function(n){
+  test <- pwr.t.test(d=ds,n=n,sig.level=alpha,type="paired",alternative="two.sided")
+  test$power
+}
+ps <- sapply(n, get_power)
+
+par(mfrow = c(1,1))
+colors <- c("black", "blue", "red", "darkgreen", "magenta")
+matplot(ds, ps, type="l", lty=1, lwd=2, xlab="Effect size d = |mu1 - mu2| / sigma", ylab="Power", main="Power of the paired two-sample t-Test (alpha=0.05, two-tailed)", xaxs="i", xlim=c(-0.05, 1.1), col=colors)
+legend(x="bottomright", legend=paste("N =", n), lwd=2, col= colors)
+
+```
+  

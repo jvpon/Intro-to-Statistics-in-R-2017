@@ -1,0 +1,370 @@
+---
+title: "MODULE V. Statistical modeling. Regression. ANOVA."
+author: "German Demidov, CRG."
+date: "June 9, 2017"
+output:
+  html_document:
+    toc: true
+    toc_depth: 4
+    theme: readable
+---
+
+<br/>
+
+
+```{r}
+set.seed(2016)
+#install.packages("ggplot2")
+#install.packages("lattice")
+#install.packages("latticeExtra")
+#install.packages("MASS")
+library(ggplot2)
+library(lattice)
+library(latticeExtra)
+library(MASS)
+```
+
+<br/>
+
+## Problems on linear regression
+```{r}
+library(car)
+summary(Davis)
+males <- Davis[which(Davis$sex == "M"),]
+females <- Davis[which(Davis$sex == "F"),]
+
+lm_height_estim_vs_height_male <- lm(males$height ~ males$repht)
+plot(jitter(males$height, factor=2) ~ jitter(males$repht, factor=2), xlab="Self-reported height (males)", ylab="Height (males)", cex=0.5)
+abline(lm_height_estim_vs_height_male)
+abline(b = 1, a = 0, col="red")
+summary(lm_height_estim_vs_height_male)
+plot(lm_height_estim_vs_height_male)
+```
+<br/>
+
+Q: Let's assume that one guy made a joke and reported his height as too high. Exectute ```males[1,]$repht=300```. Make the same analysis, interpret linear model's summary. In order to solve this issue: change ```lm``` function to ```rlm```.
+<br/>
+
+Q: Repeat the analysis for female's weight. Interpret results. Find ouliers and influental points. Apply ```rlm```.
+
+<br/>
+
+## ANOVA
+
+(Example from ```http://homepages.inf.ed.ac.uk/bwebb/statistics/ANOVA_in_R.pdf```)
+<br/>
+```{r}
+attach(InsectSprays)
+data(InsectSprays)
+str(InsectSprays)
+```
+<br/>
+
+#### Examine the data
+```{r}
+tapply(count, spray, mean)
+tapply(count, spray, var)
+tapply(count, spray, length)
+boxplot(count ~ spray)
+```
+
+Q: What can you say based on these plots?
+<br/>
+
+#### One-way ANOVA
+```{r}
+oneway.test(count ~ spray)
+```
+
+Default is that the equalily of variances (i.e. homogeneity of variance) is not assumed; that is, the Welch’s correction is applied (and this explains why the denominator of df (which is normally k*(n-1)) is not a whole number in the output). To change this, set ```"var.equal="``` option to ```TRUE```.
+
+<br/>
+Q: What can be concluded from this result?
+
+```{r}
+aov.out = aov(count ~ spray, data=InsectSprays)
+summary(aov.out)
+```
+<br/>
+
+#### Post-hoc tests
+
+```{r}
+TukeyHSD(aov.out)
+```
+<br/>
+
+#### Test assumptions
+
+Homogenity of variance
+```{r}
+bartlett.test(count ~ spray, data = InsectSprays)
+```
+<br/>
+
+Check the linear regression assumptions
+```{r}
+plot(aov.out)
+```
+<br/>
+Q: Interpret this plots and result of the test.
+<br/>
+
+#### Two-way ANOVA
+
+```{r}
+df <- Salaries
+summary(df)
+par(mfrow=c(1,2))
+plot(salary ~ sex + rank, data=df)
+results = lm(salary ~ sex + rank + sex:rank, data=df)
+anova(results)
+qqnorm(results$res)
+model.aov <- aov(results)
+TukeyHSD(model.aov,
+         conf.level = 0.95)
+```
+<br/>
+Q: Try the same with applied (B) or theoretical (A) departments (```df$discipline```) instead of sex.
+<br/>
+
+## Data transformation
+
+The need of data transformation is depending on what model do you want to use. It is a powerful technique, however, I do not recommend to use it blindly. Even if your diagnostic plots are looking good for transformed data, sometimes it is better to use more sophisticated model.
+
+Data transformation is an application of function to the data for different purposes:
+
+1) Normality of data
+
+2) Visualisation
+
+3) Variance stabilization
+
+Mathematically: you have set of points ```x```, you apply function ```f()``` to the data and obtain new dataset ```z = f(x)```. Desired properties of ```f```: it should be continuous and reversible, so you can make transformation, perform some tests/other actions and then reverse it back.
+
+<br/>
+
+#### Normality
+
+Simplest thing - Z-score, in R it does ```scale()``` function:
+
+```{r}
+set.seed(912)
+vect <- rpois(10000, lambda=20)
+plot(density(scale(vect)))
+x   <- seq(-5,5,length=1000)
+lines(x, dnorm(x), type="l",col="red")
+qqnorm(scale(vect))
+qqline(scale(vect), col="red")
+abline(v=c(-2,2),h=c(-2,2))
+```
+<br/>
+
+Q: Do the same with ```sqrt(vect + 3/8)``` (Anscombe's transformation).
+<br/>
+Q: Change bandwidth of ```density```: add to the third line ```plot(density(scale(vect)))``` parameter ```width=0.01```. 
+
+```{r}
+set.seed(1)
+hist(replicate(10000, shapiro.test(rpois(100, lambda=80))$p.value))
+```
+<br/>
+Q: Change to ```sqrt(x + 3/8)``` and look at the histogram of p-values.
+
+
+```{r}
+vect <- rnbinom(10000, size=5, mu=80)
+plot(density((vect)))
+plot(density(scale(vect)))
+plot(density(scale(sqrt(vect + 3/8))))
+```
+
+However, for more skewed distributions ```sqrt``` transformation are not as effective.
+```{r}
+set.seed(1)
+hist(replicate(10000, shapiro.test(rnbinom(100, size=5, mu=80))$p.value))
+hist(replicate(10000, shapiro.test(sqrt(rnbinom(100, size=5, mu=80) + 3/8))$p.value))
+```
+
+Log-normal distribution:
+```{r}
+vect <- exp(rnorm(10000))
+plot(density(vect))
+plot(density(log(vect)))
+```
+
+<br/>
+
+#### Variance-stabilizing transformation
+
+Suppose you have started an experiment: you divided your bacterial culture into 100 parts of equal size, added chemicals with different concentration that affect DNA and started sequencing it in order to estimate mutation rate with concentration.
+
+```{r}
+x <- round(runif(100, 1, 50))
+y <- rpois(100, lambda=x)
+y_vs_x <- lm(y ~ x)
+plot(y ~ x)
+abline(y_vs_x)
+```
+
+```{r}
+vect_big <- rpois(10000, 1000)
+vect_small <- rpois(10000, 10)
+plot(density(vect_small), xlim=c(min(vect_big, vect_small), max(vect_big, vect_small)))
+lines(density(vect_big))
+plot(density(sqrt(vect_small + 3/8)), xlim=c(min(sqrt(vect_big), sqrt(vect_small)), max(sqrt(vect_big), sqrt(vect_small))))
+lines(density(sqrt(vect_big + 3/8)))
+```
+
+<br/>
+
+#### Box-Cox transformation
+
+Univariate Box-Cox:
+```{r}
+set.seed(1926)
+data <- rnbinom(1000, size=5, mu=80)
+plot(density(data))
+summary(p1 <- powerTransform(data))
+transformedY <- bcPower(data, lambda <- p1$lambda)
+plot(density(transformedY))
+```
+
+Box-Cox for regression:
+```{r}
+N <- 1000
+x <- rnorm(N, mean = 10, sd = 1.5)
+beta0 <- 1
+beta1 <- 2
+beta1_2 <- 0.5
+y <- (beta0 + beta1 * x + rnorm(N, sd = 0.5)) ** 10
+plot(y ~ x)
+boxcox(y ~ x)
+p1 <- powerTransform(y)
+p1$lambda
+```
+<br/>
+Take lambda and transform ```y``` according to it.
+
+<br/>
+
+## Regression
+
+#### Plots of residuals vs. fitted values
+
+
+```{r}
+panel <- function(...) {
+    panel.xyplot(...)
+        panel.lmline(...)
+}
+N <- 1000
+x <- rnorm(N)
+beta0 <- 1
+beta1 <- 2
+beta1_2 <- 0.5
+y <- exp(beta0 + beta1 * x + rnorm(N, sd = 0.5))
+df <- data.frame(y = y, x = x)
+l <- lm(y ~ x, data = df)
+l2 <- lm(log(y) ~ x, data = df)
+p1 <- xyplot(residuals(l) ~ fitted(l), panel = panel)
+p2 <- xyplot(residuals(l2) ~ fitted(l2),
+    panel = panel)
+plot(c(original = p1, logarithm = p2))
+```
+
+```{r}
+
+y <- beta0 + beta1 * x + beta1_2 * x^2 +
+    rnorm(N, sd = 0.1)
+df <- data.frame(y = y, x = x)
+l <- lm(y ~ x, data = df)
+l2 <- lm(y ~ poly(x, degree = 2), data = df)
+p1 <- xyplot(residuals(l) ~ fitted(l), panel = panel)
+p2 <- xyplot(residuals(l2) ~ fitted(l2),
+    panel = panel)
+plot(c(linear = p1, quadratic = p2))
+```
+<br/>
+
+#### Regression: interpretation
+
+I.e., coverage depth of your sequencing experiment. Let us assume that we work with IonTorrent and PCR. You have 48 samples with equal library sizes and you want to study relationship between coverage of two regions. Region_1 is taken from houskeeping gene, Region_2 - one of interest.
+
+```{r echo=FALSE}
+set.seed(1990)
+means_first <- rnorm(48, mean=5.0, sd=0.7)
+means_second <- means_first + rt(48, df=20)
+samples <- data.frame(matrix(c(round(exp(means_first)), round(exp(means_second))),  nrow=48, ncol=2))
+colnames(samples) <- c("Region_1", "Region_2")
+```
+```{r}
+plot(density(samples[,2]))
+qqnorm(samples[,2])
+m <- lm(Region_2 ~ Region_1, data = samples) 
+samples_without_log <- cbind(samples, predict(m, interval = "prediction")) 
+ggplot(samples_without_log, aes(x = Region_1)) + 
+   geom_ribbon(aes(ymin = lwr, ymax = upr), 
+               fill = "blue", alpha = 0.2) + 
+   geom_point(aes(y = Region_2)) + 
+   geom_line(aes(y = fit), colour = "blue", size = 1) 
+qqnorm(m$residuals)
+#qqnorm(m$residuals[which(m$residuals < 1000)])
+```
+
+
+```{r}
+samples_log <- data.frame(apply(samples,2,log))
+m <- lm(Region_2 ~ Region_1, data = samples_log) 
+samples_log <- cbind(samples_log, predict(m, interval = "prediction")) 
+ggplot(samples_log, aes(x = Region_1)) + 
+   geom_ribbon(aes(ymin = lwr, ymax = upr), 
+               fill = "blue", alpha = 0.2) + 
+   geom_point(aes(y = Region_2)) + 
+   geom_line(aes(y = fit), colour = "blue", size = 1) 
+qqnorm(m$residuals)
+```
+
+<br/>
+
+#### Comparison of methods
+
+Suppose you developed a new method for measuring some value. You have gold standard method and your method and you need to compare them.
+
+Let us use correlations.
+```{r}
+true_value <- runif(100, 20, 100)
+gold_standard <- true_value + rnorm(100, mean=0, sd=1)
+your_method <- true_value + rnorm(100, mean=log(true_value), sd=2)
+plot(gold_standard ~ your_method)
+abline(lm(gold_standard ~ your_method))
+cor(gold_standard, your_method)
+abline(a=0,b=1,col="red")
+```
+
+Correlation are related to any linear relationship, but for method's agreement you are interested only in one particular line ```y = x```. Solution: Bland-Altman plots.
+```{r}
+sum_of_methods <- gold_standard + your_method
+diff_of_methods <- gold_standard - your_method
+plot(sum_of_methods / 2, diff_of_methods)
+abline(h=0)
+print(c(mean(diff_of_methods) - 1.96 * sd(diff_of_methods), mean(diff_of_methods) + 1.96 * sd(diff_of_methods)))
+```
+<br/>
+
+#### Coordinates transformation
+
+Log-Log plots are required for relationships of ```y = ax^k```. You take log of both parts and get ```log(y) = log(a) + k * log(x)```.
+
+```{r echo=FALSE}
+x <- runif(20, 1, 100)
+y <- 20 * x^10
+```
+
+```{r}
+paste(as.character(x), sep="' '", collapse=", ")
+paste(as.character(y), sep="' '", collapse=", ")
+plot(x, y)
+```
+<br/>
+Fit regression value and interpret the coefficients. Find ```a``` and ```k```.

@@ -40,8 +40,18 @@ MODULE II. Statistical Inference. Parametric tests.
 ---
 Module III. Statistical Inference. False Discovery Rate. Power analysis. Part 1.
 - FWER, FDR
-- Power Analysis
-- Sample Size estimation
+- Power analysis
+- Sample size estimation
   - Sample size case study 1: Central Tendency (means) difference
   - Sample size case study 2: Central Tendency (means) difference, less noisy
   - Sample size case study 3: Proportions
+
+---
+Module III. Statistical Inference. Power analysis. Part 2. (re-iteration of Part 1 with more exercises)
+- Sample size estimation
+- Power of tests
+  - Types of errors
+  - Power of the one-sample t test
+  - Power of the two-sample t test
+  - Calculating power using the package “pwr”
+  

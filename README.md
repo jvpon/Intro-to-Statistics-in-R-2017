@@ -63,3 +63,22 @@ MODULE IV. Statistical inference. Non-parametric tests. Data transformation.
 - Non-parametric tests
 
 ---
+MODULE V. Statistical modeling. Regression. ANOVA.
+- Problems on linear regression
+- ANOVA
+  - Examine the data
+  - One-way ANOVA
+  - Post-hoc tests
+  - Test assumptions
+  - Two-way ANOVA
+- Data transformation
+  - Normality
+  - Variance stabilization
+  - Box-Cox
+- Regression
+  - Plots of residuals vs. fitted values
+  - Regression: interpretation
+  - Comparison of methods
+  - Coordinates transformation
+
+---

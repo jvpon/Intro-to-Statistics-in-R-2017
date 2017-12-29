@@ -1,0 +1,426 @@
+---
+title: 'Module II. Statistical Inference. Parametric tests.'
+author: German Demidov, CRG
+date: "June 7, 2017"
+output:
+  html_document:
+    toc: true
+    toc_depth: 4
+    theme: readable
+---
+
+```{r}
+# install.packages("MASS") - run this code if you do not have MASS package
+library(MASS)
+```
+
+
+## One-sample test with known variance
+
+#### Does chocolate increase our IQ?
+
+"When current IQ tests are developed, the median raw score of the norming sample is defined as IQ 100 and scores each standard deviation (SD) up or down are defined as 15 IQ points greater or less" - wikipedia.
+
+Suppose we know that average IQ in population is equal to 100 and IQ is normally distributed with standard deviation of 15. You have a agreement with a company that produces chocolate that you will study an impact of chocolate intake on people's IQ. You want to study if persons who eat significant amount of chocolate every day are more or less clever than average. You made an ad on the university's website and in mass media and asked for volunteers. Your secretary told you that you have claims from 25 volunteers. You feed them with chocolate for 1 month and their IQ measures after this period were:
+
+```{r}
+
+chocolate_IQs <- c(88, 107, 106, 127, 99, 71, 95, 114, 91, 82, 80, 114, 94, 59, 122, 134, 97, 89, 79, 128, 93, 87, 100, 102, 111, 107, 95, 108, 97, 70)
+summary(chocolate_IQs)
+```
+
+Consideration: If a sample of ```n``` individuals has been chosen `at random` from the population, then the likely size of chance error of the sample mean (called the standard error) is ```SE = population_sigma / sqrt(n)```. 
+
+<b>Q:</b> Population sigma is equal to 15, calculate the standard error of the mean for IQs of your volunteers (```chocolate_IQs```).
+
+Since you know that IQs are normalised in a way that standard deviation is equal to 15 and you sampled your cohort from the population, you may assume that the standard deviation is equal to 15. Just to be sure you test if the variances are equal for Control and Treated group. You can perform it using F-test on variations equality (```?var.test``` for additional information) if you compare variances of two samples, but here we know true variance and it is equal to 15. Since we know true standard deviation from our population (```sd=15```), we apply Chi-squared test directly. The statistic will be ```(number of degrees of freedom) * (sample variance / true variance)```. H0 will be "standard deviation is less or equal to populational standard deviation" and H1 will be "standard deviation is greater than populational standard deviation". For hypothesis "variances are not equal" you should use ``alpha/2`` level of significance from both sides.
+
+```{r, eval=FALSE}
+(length(chocolate_IQs) - 1) * var(chocolate_IQs) / (15 ** 2)
+qchisq(1 - 0.05, length(chocolate_IQs) - 1)
+```
+
+
+<b>Q0:</b> What did this test tell us about equality of variances between population and group of chocolate feeded people?
+
+<b>Q1:</b> What test would you choose for this example? Why?
+
+Null hypothesis: mean of the sample is equal to the hypothesized (population) mean.
+
+Assumptions of Z-test:
+
+<ol>
+  <li>Normal distribution of population</li>
+  <li>Samples were choosen at random</li>
+  <li>True standard deviation is known</li>
+</ol>
+
+How to test data for normality?
+
+```{r}
+shapiro.test(chocolate_IQs)
+```
+
+Interpret the result of a test. How to test independence of sampling?
+
+```{r}
+z.test = function(a, mu, std){
+   zeta = (mean(a) - mu) / (std / sqrt(length(a)))
+   return(zeta)
+}
+z.test(chocolate_IQs, 100, 15)
+qnorm(0.975)
+```
+
+<b>Q2:</b> This test returns Z-statistic that should be compared with quantile of standard normal distribution. What can you say about the result of test? What if you will change your hypothesis to "are people who are eating chocolate are more clever"? (Hint: you will need function ```qnorm(0.95)```).
+
+```{r echo=FALSE}
+set.seed(2016)
+chocolate_IQs_long <- rnorm(10000, mean=101, sd=20)
+```
+
+<b>Q3:</b> The company pays you to test chocolate intake impact more extensively and you increased the number of samples that took part in the study. Now the vector "chocolate_IQs" contains results of 10000 measures. Interpret result of the test (you do not need to perform calculations by yourself).
+```{r}
+z.test(chocolate_IQs_long, 100, 15)
+```
+
+<b>Q4:</b> The data for this task was simulated from the distributions with different parameters. Here we see true density of IQ of people who do not eat chocolate and estimated density of your 10000 volunteers. Interpret the results of test using the plot. (Plot will be shown during the seminar)
+```{r, echo=F}
+x <- seq(-4,4,length=100)*15 + 100
+hx1 <- dnorm(x,mean=100,sd=15)
+hx2 <- dnorm(x,mean=101,sd=20)
+plot(x, hx1,type="n",xlab="IQ: red = chocolate-eaters, blue = others; vertical lines - true means", col="blue", ylab="Density")
+lines(x, hx1, col="blue")
+abline(v=100, col="blue")
+lines(density(chocolate_IQs_long), col="red")
+abline(v=101, col="red")
+```
+
+What is wrong with this plot? 
+
+## One-sample test with unknown variance
+
+Assumptions of one-sample t-test:
+
+<ol>
+  <li>Normal distribution of the sample</li>
+  <li>Independent data points</li>
+  <li><i>Absence of outliers</i></li>
+</ol>
+
+You performed a genetic modification of bacteria. You wanted to estimate how this modification influenced its life span and measured the lengths of life for 25 bacteria. But your colleague told you that he already did this modification and length of life was equal to 80 minutes. Is your colleague right? Can you trust him or is he just trying to ruin your research?
+
+```{r echo=FALSE}
+life_span <- rnorm(25, mean=90, sd=10)
+```
+Copy following measures to the vector ```life_span```:
+```{r}
+paste(as.character(life_span), sep="' '", collapse=", ")
+```
+
+You can call ```t.test``` function to perform one-sample t-test, but before - check the assumption of normality and absence of outliers (hint: use ```shapiro.test()``` and ```boxplot()``` command).
+
+```{r eval=FALSE}
+t.test(life_span, mu=80)
+```
+
+<b>Q5:</b> Could you interpret the results?
+
+## Unpaired two-sample test with unknown variance
+
+You have group of samples who recieved new drug and group of sample that were cured according to the standard protocol. You were told that 20 patients with the disease were selected from the population and divided into 2 equal groups: 10 and 10. You measure hormone levels that are known to be distributed normally, and the lower level is the better. 
+
+<b>Q6:</b> Is your new drug better?
+
+```{r echo=FALSE}
+set.seed(998)
+treated_group <- (rnorm(10, mean=10000, sd=2150))
+control_group <- (rnorm(10, mean=11000, sd=1900))
+```
+
+Assumptions of two-sample non-paired t-test:
+
+<ol>
+  <li>Normal distribution of the samples</li>
+  <li>Independent data points</li>
+  <li><i>Absence of outliers</i></li>
+</ol>
+
+```{r}
+treated_group <- c(9830.76249436958, 6161.37243638468, 13131.8353604025, 10284.6598357407, 9245.98726622183, 7175.32445354559, 11174.4236746503, 12437.8577787669, 7093.47847958366, 9925.07623800654)
+control_group <- c(12253.9047358527, 11425.4583361033, 11659.6962460054, 11759.4030595056, 9671.33755357213, 13352.9689425818, 7974.08085172749, 11220.3927754223, 12885.6045226814, 13032.8169883379)
+```
+
+You need to check if your variances are equal if you want to apply original version of t-test. Now we will use ```R``` to check it.
+
+```{r, eval=F}
+var.test(treated_group, control_group)
+```
+
+You also would like to examine the data visually:
+```{r, eval=F}
+x <- cbind(treated_group, control_group)
+x <- as.data.frame(x)
+names(x) <- c("Treated", "Control")
+colors <- c("red","blue")
+boxplot(x, border=colors)
+stripchart(x, col=colors, vertical = T, add=T, method="stack",pch=20)
+```
+
+Do you see any outliers?
+
+
+Call your vectors as ```treated_group``` and ```control_group```, respectively.
+```{r, eval=FALSE}
+t.test(treated_group, control_group,alternative="less")
+```
+
+<b>Q7:</b> Interpret result of the test.
+
+## Paired two-sample test with unknown variance
+
+"Dependent groups can be the same subjects used again (repeated measures), or they can be matched samples. Either way, the t-test is performed on the difference scores and amounts to little more than a single sample t-test. A normal distribution of difference scores is strongly encouraged, unless the sample is large enough that you can hide behind the central limit theorem and claim a normal sampling distribution of means of the differences, in which case the t-test is robust to violations of the normality assumption." - William B. King, Coastal Carolina University.
+
+Assumptions of two-sample test are approx. the same as for non-paired test, but now differences betweeen observations should be independent.
+
+Now you got the email that, actually, your samples were the same people, but measured before treatment and after. 
+
+<b>Q8:</b> Re-do the test, using new information.
+
+```{r, eval=FALSE}
+t.test(treated_group, control_group,paired=TRUE,alternative="less") 
+```
+
+Another example (analysis of anorexia data: weights of woman before study ```Prewt``` and after ```Postwt```, ```Cont``` means Control Group, ```CBT``` means Cognitive Behavioural treatment, ```FT``` means family therapy).
+```{r, eval=T}
+data(anorexia, package="MASS")
+attach(anorexia)
+str(anorexia)
+```
+
+Examine the data. What type of hypothesis can you test on this data? Test variances for equality.
+
+
+```{r, eval=F}
+ft = subset(anorexia, subset=(Treat=="FT"))   # we subsample only patients that followed family therapy
+with(ft, var.test(Postwt, Prewt))
+```
+Can we apply t-test for this real data? 
+
+Read this part from ```?t.test```:
+```
+If paired is TRUE then both x and y must be specified and they must be the same length. Missing values are silently removed (in pairs if paired is TRUE). If var.equal is TRUE then the pooled estimate of the variance is used. By default, if var.equal is FALSE then the variance is estimated separately for both groups and the Welch modification to the degrees of freedom is used.
+```
+
+Finally, apply t-test.
+```{r, eval=F}
+with(ft, t.test(Postwt-Prewt, mu=0, alternative="greater"))
+with(ft, t.test(Postwt, Prewt, paired=T, alternative="greater"))
+```
+
+Why two tests (single sample and paired two samples) gave equal results?
+
+Welch test is not a magic pill - it gaves also approximate solution. However, it is recommended to use usual t-test for equal population variances case, or if the samples are rather small and the population variances can be assumed to be approximately equal. Otherwise Welch test is preferred. If you want to learn more about the potential issues and ways how to deal with them, read wiki's article on Behrens–Fisher problem.
+
+## Test for proportions
+
+You study one SNP allele in Spanish population. You found a paper that you want to use in your research and this paper states that frequency of this SNP allele is equal to 0.4 in German population. But you sequenced 50 Spanish and found that only 13 of samples had this allele (and you expect 20). You wander if it is different from German population (because you want to assume that popultations are similar and use the same procedures as were used in the paper).
+
+
+Assumptions of proportions test:
+
+<ol>
+  <li>Independent random sampling</li>
+  <li>Sample size is reasonably high (for example, 10 failures and 10 successes are recommended)</li>
+</ol>
+
+At first, do it by hand:
+```
+(estimated_proportion - true_proportion) / sqrt((true_proportion * (1 - true_proportion)) / sample_size)
+```
+
+and compare it with standard normal quantile. Or you can use ```2 * pnorm(statistic)``` to obtain a p-value (two-tailed, for one-tailed it is not necessary to multiply by 2).
+
+Then use R function
+```{r}
+prop.test(13, 50, p=0.4, correct=F) 
+```
+
+<b>(changed example from stattrek.com)</b>
+Suppose the Acme Drug Company develops a new drug, designed to prevent colds. The company states that the drug is equally effective for men and women. To test this claim, they choose a random sample of 100 women and 200 men from a population of 100,000 volunteers.
+
+At the end of the study, 38 of the women caught a cold; and 101 of the men caught a cold. Based on these findings, can we reject the company's claim that the drug is equally effective for men and women? Use a 0.05 level of significance.
+
+```{r}
+prop.test(c(38, 100), c(101,200))
+```
+
+<b>Q9:</b> R uses continuity correction by default. Test the same data with correction (remove ```correct=F```). Explain results.
+
+Here is <b>another example</b>. You want to test if two bacteria are equally sensitive to one particular antibiotic. You created a mixed culture of bacterias of 2 types, then divided them into two Petri's dishes and added antibiotic into one dish. Did the proportion of bacterias in different dishes changed?
+
+```{r}
+bacteria_symbiosis <-
+matrix(c(68, 32, 125, 95),
+       nrow = 2,
+       dimnames = list(
+                       Colony = c("Without antibiotic", "With antibiotic"),
+                       Bacteria = c("E.coli", "Listeria")))
+print(bacteria_symbiosis)
+prop.test(bacteria_symbiosis , alternative = "greater")
+```
+
+<b>Fisher's exact test:</b>
+
+Agresti (1990, p. 61f; 2002, p. 91) 
+A British woman claimed to be able to distinguish whether milk or tea was added to the cup first.  To test, she was given 8 cups of tea, in four of which milk was added first.  The null hypothesis is that there is no association between the true order of pouring and the woman's guess, the alternative that there is a positive association (that the odds ratio is greater than 1).
+
+Assumptions of Fisher exact test on proportions:
+
+<ol>
+  <li>For exactness - row and column totals are fixed</li>
+  <li>Independence of individual observations</li>
+  <li>Recomendation: to use it only for small numbers where chi-squared test is not valid (less than 10 observations)</li>
+</ol>
+
+Woman knows the amount of cups with different orders so the outcome table will look like:
+
+```
+matrix(c(4 - k, k, k, 4 - k))
+```
+
+```{r}
+TeaTasting <-
+matrix(c(3, 1, 1, 3),
+       nrow = 2,
+       dimnames = list(Guess = c("Milk", "Tea"),
+                       Truth = c("Milk", "Tea")))
+fisher.test(TeaTasting, alternative = "greater")
+```
+
+<b>Q10:</b> let us assume that the woman guessed all cups correctly. Is it enough to say that she can distinguish between the orders with 0.05 significance?
+
+
+
+ 
+## Simulation involving confidence intervals and t-distribution
+
+
+Let us show the definition of confidence intervals on the simulation example. For example, we are trying to estimate the average male student height in some population. We assume that the average height is 175 and standard deviation is equal to 15, height is normally distributed. We calculate 95% confidence intervals using formula from the lectures.
+
+But, evidently, one single person can not measure a lot of people so we distribute the research between different universities. It seems quite reasonable to estimate number of measures that could be done in one university as 100. But we involve more researchers, say, 100, so we can make measures in different universities, and compare confidence intervals that were obtained in different studies.
+
+```{r}
+set.seed(2012)
+m = 175
+s = 15
+number_of_elements_in_one_sample <- 100 # number of persons that can be measured in one place within one day
+number_of_simulations <- 100 # number of different researchers that make measures
+matrix_of_bounds_of_confidence_intervals <- matrix(rep(0, 2 * number_of_simulations), nrow=number_of_simulations, ncol=2)
+plot(rep(m, number_of_simulations) ~ c(1:number_of_simulations), ylim=c(m - 2 * s, m + 2 * s), cex=0.3, pch=19, xlab="Different researchers' confidence intervals", ylab="Estimation of height with true = 175")
+for (i in 1:number_of_simulations) {
+  sample_from_population <- rnorm(number_of_elements_in_one_sample, mean = m, sd = s)
+  mean_estimated = mean(sample_from_population)
+  sd_estimated = sd(sample_from_population)
+  error <- (qnorm(0.975) * sd_estimated) / sqrt(number_of_elements_in_one_sample)
+  left_end <- mean_estimated - error
+  right_end <- mean_estimated + error
+  matrix_of_bounds_of_confidence_intervals[i,1] <- left_end
+  matrix_of_bounds_of_confidence_intervals[i,2] <- right_end
+  if (right_end < m | left_end > m) {
+    segments(i, left_end, i, right_end, lwd=2, col="red")
+  } else {
+    segments(i, left_end, i, right_end, lwd=2)
+  }
+}
+```
+
+<b>Q11:</b> How many 95% confidence intervals are "wrong", i.e., do not contain true mean (175 cm)? How many wrong intervals are expected?
+
+<b>Q12:</b> Try to run the code several more times (without ```set.seed```). Did the percentage of wrong confidence intervals change? Let us assume that you do not have time to measure height of 100 males in your study, but 20 males is OK for you. Change "number_of_elements_in_one_sample" to 20 and run the code again several times. 
+
+<b>Q13:</b> Let us assume that larger number of researchers, i.e., 10000, measured 200 males from the population each. What percentage of wrong confidence intervals do you expect? Check with the following code.
+
+```{r}
+set.seed(900)
+number_of_simulations <- 10000
+number_of_elements_in_one_sample <- 100
+number_of_confidence_intervals_that_do_not_cover_mean <- 0
+for (i in 1:number_of_simulations) {
+  sample_from_population <- rnorm(number_of_elements_in_one_sample, mean = m, sd = s)
+  mean_estimated = mean(sample_from_population)
+  sd_estimated = 15
+  error <- (qnorm(0.975) * sd_estimated) / sqrt(number_of_elements_in_one_sample)
+  left_end <- mean_estimated - error
+  right_end <- mean_estimated + error
+  if (right_end < m | left_end > m) {
+    number_of_confidence_intervals_that_do_not_cover_mean = number_of_confidence_intervals_that_do_not_cover_mean + 1
+  }
+}
+```
+
+
+Check your estimation.
+```{r}
+print( 100 * (number_of_confidence_intervals_that_do_not_cover_mean) / number_of_simulations)
+p = number_of_confidence_intervals_that_do_not_cover_mean / number_of_simulations
+ME = qnorm(1-0.05/2)*sqrt(p*(1-p)/1000)
+print(c(p-ME,p+ME))
+```
+
+
+
+
+<b>Q14:</b> Now we assume that each researcher has time to measure only 20 samples. Change variable "number_of_elements_in_one_sample" to 20 and estimate percentage of 95% confidence intervals that do not cover true mean again. Has something changed in the percentage of "wrong" confidence intervals? How to resolve this issue?
+
+```{r}
+number_of_simulations <- 10000
+number_of_elements_in_one_sample <- 20
+matrix_of_bounds_of_confidence_intervals <- matrix(rep(0, 2 * number_of_simulations), nrow=number_of_simulations, ncol=2)
+number_of_confidence_intervals_that_do_not_cover_mean <- 0
+for (i in 1:number_of_simulations) {
+  sample_from_population <- rnorm(number_of_elements_in_one_sample, mean = m, sd = s)
+  mean_estimated = mean(sample_from_population)
+  sd_estimated = sd(sample_from_population)
+  error <- (qnorm(0.975) * sd_estimated) / sqrt(number_of_elements_in_one_sample)
+  left_end <- mean_estimated - error
+  right_end <- mean_estimated + error
+  matrix_of_bounds_of_confidence_intervals[i,1] <- left_end
+  matrix_of_bounds_of_confidence_intervals[i,2] <- right_end
+  if (right_end < m | left_end > m) {
+    number_of_confidence_intervals_that_do_not_cover_mean = number_of_confidence_intervals_that_do_not_cover_mean + 1
+  }
+}
+print( 100 * (number_of_confidence_intervals_that_do_not_cover_mean) / number_of_simulations)
+p = number_of_confidence_intervals_that_do_not_cover_mean / number_of_simulations
+ME = qnorm(1-0.05/2)*sqrt(p*(1-p)/1000)
+print(c(p-ME,p+ME))
+```
+
+Change quantile from normal quantile to Student's t 0.975 quantile with replacement ```qnorm(0.975)``` with ```qt(0.975, number_of_elements_in_one_sample - 1)```.
+
+#### Additional problems
+
+<b>Q15:</b> (From http://www.stat.columbia.edu/) An outbreak of Salmonella-related illness was attributed to ice cream produced at a certain factory. Scientists measured the level of Salmonella in 9 randomly sampled batches of ice cream. The levels (in MPN/g) were:
+```0.593, 0.142, 0.329, 0.691, 0.231, 0.793, 0.519, 0.392, 0.418```. Is there evidence that the mean level of Salmonella in the ice cream is greater than 0.3 MPN/g?
+
+```{r, echo=F, eval=F}
+x = c(0.593, 0.142, 0.329, 0.691, 0.231, 0.793, 0.519, 0.392, 0.418)
+t.test(x, alternative="greater", mu=0.3)
+```
+
+<b>Q16:</b> Find an information about ```r``` dataset ```sleep```. Think about possible designs of studies on this data. Perform your study with your design.
+
+```{r, echo=F, eval=F}
+with(sleep,
+     t.test(extra[group == 1],
+            extra[group == 2], paired = TRUE))
+
+## The sleep *prolongations*
+sleep1 <- with(sleep, extra[group == 2] - extra[group == 1])
+summary(sleep1)
+stripchart(sleep1, method = "stack", xlab = "hours",
+           main = "Sleep prolongation (n = 10)")
+boxplot(sleep1, horizontal = TRUE, add = TRUE,
+        at = .6, pars = list(boxwex = 0.5, staplewex = 0.25))
+```

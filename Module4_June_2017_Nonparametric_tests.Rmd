@@ -1,0 +1,340 @@
+---
+title: "MODULE IV. Statistical inference. Non-parametric tests. Data transformation."
+author: "Julia Ponomarenko, CRG Bioinformatics core facility."
+date: "June 9, 2017"
+output:
+  html_document:
+    toc: true
+    toc_depth: 4
+    theme: readable
+---
+
+<br/>
+
+
+QQ-plot
+------------------
+
+We will use the package "car". For details on this package, see https://cran.r-project.org/web/packages/car/car.pdf
+And the dataset "Davis" from the car package, which we used in Module 1.
+```{r, results="hide", warning = F}
+# install.packages("car") - run this code if you do not have car" package installed
+library(car) 
+data <- Davis
+```
+<br/><br/>
+
+
+Let's remove outliers for weight
+```{r, results="hide"}
+quantile(data$weight)
+q <- unname(quantile(data$weight)) # unname() removes names and gives the vector of quantile values that we use below
+
+iqr <- q[4] - q[2] # or use IQR(data$weight) instead
+upper_limit <- q[4] + 1.5 * iqr # values above this limit are outliers
+upper_limit
+d <- data[which(!data$weight > upper_limit), ] # d is our data frame without outliers; we will use it further in this practicum
+```
+
+<br/>
+
+Let's plot eCDF(x) for weight (eCDF(x) = the proportion of observations which values are <= x) and CDF for a theoretical normal distirbution N(mu=mean(data$weight), sd=sd(data$weight))
+```{r, results="hide"}
+plot(ecdf(data$weight), xlab = "Quantiles of weight", ylab = "Cumulative Probability", main = "eCDF", yaxs = "i")
+
+x <- seq(20, 200, 0.1)
+cdf <- pnorm(x, mean(data$weight), sd(data$weight))
+
+lines(x = x, y = cdf, col = "blue", lwd = 3)
+```
+
+<br/>
+
+Now, with qqPlot(), we will plot the correspondence between quntiles for weights versus theoretical quntiles.
+```{r, results="hide"}
+qqPlot(data$weight) # package "car", plot with confidence interval
+```
+<br/><br/>
+
+For more detail on qqPlot, see http://stats.stackexchange.com/questions/101274/how-to-interpret-a-qq-plot?rq=1
+
+
+<br/>
+
+Tests on normality
+-------------------------
+####Shapiro-Wilk test
+The Shapiro–Wilk test tests the null hypothesis that a sample came from a normally distributed population.
+Interpretation: "If the p-value is less than the chosen alpha level, then the null hypothesis is rejected and there is evidence that the data tested are not from a normally distributed population. On the contrary, if the p-value is greater than the chosen alpha level, then the null hypothesis that the data came from a normally distributed population cannot be rejected (e.g., for an alpha level of 0.05, a data set with a p-value of 0.02 rejects the null hypothesis that the data are from a normally distributed population)."
+**The test is sensitive to outliers.**
+
+```{r}
+shapiro.test(data$weight)
+
+# let's test weights (with and w/o outliers) for males 
+male <- data[which(data$sex == "M"),] # males with outliers
+mo <- male$weight
+shapiro.test(mo)
+
+male <- d[which(d$sex == "M"),] # males w/o outliers 
+m <- male$weight
+shapiro.test(m)
+
+qqPlot(mo)
+qqPlot(m)
+
+# let's test weights (with and w/o outliers) for females 
+female <- data[which(data$sex == "F"),]
+fo <- female$weight
+shapiro.test(fo)
+
+female <- d[which(d$sex == "F"),]
+f <- female$weight
+shapiro.test(f)
+
+qqPlot(fo)
+qqPlot(f)
+```
+
+
+<br/>
+
+
+####Kolmogorov-Smirnov (ks) test
+Shapiro test cannot be run for sample size above 5000 because, for large amounts of data, it can detect even very small deviations from normality, thus leading to rejection of the null hypothesis event though for practical purposes the data is more than normal enough.
+In that case, ks.test() can be used
+```{r, warning = F}
+ks.test(data$weight, "pnorm", mean(data$weight), sd(data$weight)) # with outliers
+ks.test(d$weight, "pnorm", mean(d$weight), sd(d$weight)) # w/o ouliers
+
+ks.test(mo, "pnorm", mean(mo), sd(mo))
+ks.test(m, "pnorm", mean(m), sd(m))
+
+ks.test(fo, "pnorm", mean(fo), sd(fo))
+ks.test(f, "pnorm", mean(f), sd(f))
+```
+
+
+<br>
+
+####How to get the value of the p-value
+```{r, warning = F}
+test <- ks.test(f, "pnorm", mean(f), sd(f))
+test
+test$p.value
+round(test$p.value, digits = 3)
+```
+
+
+<br/>
+
+Data transformation
+--------------------------
+
+###Log-tranformation of right-skewed data (long right tail; positive skewness)
+We will use a gamma distribution. Examples of gamma distribution: The gamma distribution has been used to model the size of insurance claims and rainfalls. In bacterial gene expression, the copy number of a constitutively expressed protein often follows the gamma distribution. In genomics, the gamma distribution is applied in peak calling step (i.e. in recognition of signal) in ChIP-seq data analysis.
+```{r}
+set.seed(500)
+shape <- 3
+scale <- 2
+gamma <- rgamma(500, shape, scale)
+
+par(mfrow = c(1,2))
+hist(gamma)
+qqPlot(gamma) #library(car)
+
+y <- log(gamma) # log transformation
+hist(y)
+qqPlot(y) #library(car)
+
+par(mfrow = c(1,1))
+
+shapiro.test(gamma)
+shapiro.test(y)
+```
+
+<br>
+
+###How to find an optimal log-transformation
+```{r, warning = F}
+#install.packages("e1071")
+library(e1071) 
+skew.score <- function(c, x) (skewness(log(x + c)))^2
+coef <- optimise(skew.score, c(0, 20), x = gamma)$minimum
+y <- log(gamma + coef)
+coef
+
+par(mfrow = c(1,2))
+hist(y)
+qqPlot(y) #library(car)
+par(mfrow = c(1,1))
+shapiro.test(y)
+```
+
+<br/>
+
+###Kolmogorov-Smirnov test for testing if two samples are from the same distirbution
+```{r}
+ks.test(gamma, y)
+```
+
+
+<br>
+
+###Power transformation for left-skewed data (long left tail)
+```{r}
+x <- c(8.11, 8.11, 8.09, 8.08, 8.06, 8.02, 7.99, 7.99, 7.97, 7.95, 7.92, 7.92, 7.92, 7.89, 7.87, 7.84, 7.79, 7.79, 7.77, 7.76, 7.72, 7.71, 7.66, 7.62, 7.61, 7.59, 7.55, 7.53, 7.50, 7.50, 7.42, 7.38, 7.38, 7.26, 7.25, 7.08, 6.96, 6.84, 6.55) # London Olympic 2012, men jumps
+
+y <- x^10 # power transformation
+
+par(mfrow = c(1,2))
+hist(x)
+qqPlot(x)
+
+hist(y)
+qqPlot(y)
+par(mfrow = c(1,1))
+shapiro.test(x)
+shapiro.test(y)
+
+ks.test(x, y)
+```
+
+<br>
+
+###Poisson distribution (count data)
+**Do not transform for small datasets!** Use suitable models, e.g., Poisson regression.
+```{r}
+lambda <- 4
+x <- rpois(20, lambda)
+
+par(mfrow = c(1,1))
+#hist(x)
+qqPlot(x) #library(car)
+```
+
+<br/>
+
+
+Non-parametric tests (distribution-free tests: no assumption on the population distribution or sample size)
+----------------------
+<br>
+
+**Non-parametric tests are for testing medians, while parametric, means.**
+
+Parametric test | Non-parametric test | Characteristics | Usage in R
+------------------- | ----------------| ----------------| ---------
+One-sample t-test (variance uknown & n<40) or z-test (otherwise) | One-sample Sign test | Test on the median  for **non-symmetric distribution** | **binom.test(x)** 
+  ibid.  | One-sample Wilcoxon test | Test on the median for **symmetric distribution** | **wilcox.test(x)**
+Two sample t-test Unpaired |  Mann-Whitney test on ranks | Test on the medians of **two independent samples** using ranks | **wilcox.test(x,y)**
+Two sample t-test Paired | Wilcoxon signed-rank test | Test on the medians of **two paired samples** | **wilcox.test(x,y, paired=TRUE)**
+One-way ANOVA | Kruskal-Wallis test | Test on equality of medians from two or more populations | **kruskal.test()**
+  ibid.  | Mood's median test| ibid. Less robust to outliers but more powerful than Kruskal-Wallis | **mood.test()**
+
+<br>
+
+
+### Reasons to use parametric tests versus non-parametric 
+<br>**- Suitable for samples n >= 30 (and even n >= 15) of skewed data with no outliers.** 
+<br>**- For two samples, even if the variances are different, t.test() can be used, as it does Welsh correction by default.  **
+<br>**- Have greater power; ttat is, larger probability to reject H0 when Ha is in fact true.**
+
+<br>
+
+### When to use non-parametric tests
+<br>**- Data are better represented by the median rather than by the mean.**
+<br>**- A very small sample size.**
+<br>**- Many outliers that cannnot be removed.**
+<br>**- Ordinal data (e.g., the size defined as "XS", "S", "M", "L", "XL") or ranked data (e.g., cells in the sample ranked by the size as 1st, 2nd, 3rd, etc.).**
+<br>**- Data cannot be transformed (or no need to transform them). **
+<br>**- The distribution is unknown and cannot be transformed to normal.**
+<br>**- Very skewed distribution (e.g., home prices in a big city).**
+  
+<br>  
+
+### Sign test (one sample or two pared samples, non-symmetrical distrbution). 
+The sign test is a method to find consistent ordinal differences between pairs of observations. It determines if one member in the pair of observations tends to be greater than the other member. Unlike t-test, there is no assumption of normality for small samples, neither any other assumption about the nature of the random variable.
+
+<br>
+
+
+**Problem 1.1. (Lecture 3)** 10 patients were treated by the weight loss drug. 6 reduced weight. Do these data suggest that the weight-control treatment works; that is, can we reject the null hypothesis that there is no difference in patients' weight before and after treatment?
+```{r}
+x1 <- c(200,202,194,188,166,196,180,188,180,210)
+x2 <- c(197,204,167,192,166,190,176,182,180,202)
+x <- x2 - x1
+length(x)
+sum(x < 0)
+binom.test(x = 6, n = 10, p = 0.5, alternative = "greater") # Performs an exact test of a simple null hypothesis about the probability of success. We use "greater" because we ask what the probability would be if we had 6 and more successes
+```
+p-value = 0.377 --> There is **no** enough evidence to reject H0; that is, to claim that the treatment worked.  
+
+<br> 
+
+
+###Two independent samples. Mann-Whitney-Wilcoxon test on ranks, or Wilcoxon-Matt-Whitney test, or Wilcoxon rank sum test, or Mann-Whitney U-test.  
+**The test runs with continuity correction by default, can be switched off**. 
+,br>**H0: samples come from the same population.**
+  
+<br>  
+
+**Problem 1.2 (Lecture 3).** In two independent groups of joggers and non-exercisers the resting pulse was measured. H0: resting pulse is the same.
+```{r}
+x <- c(60, 58, 59, 61, 67)
+y <- c(83, 60, 75, 71, 91, 82, 84)
+wilcox.test(x, y, correct = FALSE)        
+```
+There is enough evidence to reject H0 at the 5% significance level.
+  
+<br>  
+
+**Problem.** In two independent groups of pregnant women a level of some hormon was measured at two different periods of pregnancy (x and y). H0: the hormon level is the same; Ha: the hormon level is greater in the second group.
+```{r}
+x <- c(0.80, 0.83, 1.89, 1.04, 1.45, 1.38, 1.91, 1.64, 0.73, 1.46)
+y <- c(1.15, 0.88, 0.90, 0.74, 1.21)
+wilcox.test(x, y, alternative = "greater")        
+```
+There is **no** enough evidence to reject H0 at the 5% significance level.
+
+
+<br>
+
+###One-sample Wilcoxon test (symmetric distribution) or Two sample paired Wilcoxon signed-rank test    
+(the test runs with continuity correction by default, can be switched off).   
+<br>**The test is used to assess whether the differences are symmetric and centered around zero.**
+<br>**H0: differences from the median (one-sample test) or differences in paired measuments follow a symmetrical distribution.   **
+<br>**Ha: differences don’t follow a symmetric distribution centered around zero.**
+
+<br>
+
+**Problem 1.3 (Lecture 3)**. The effect of a fuel additive on the higher milage was measured in 12 cars before and after the treatment. Was the additive effective (that is, the cars run longer)? 
+```{r}
+x1 <- c(125.3, 101, 117.2, 133.7, 96.4, 124.5, 118.7, 106.2, 116.3, 120.2, 125, 128.8)
+x2 <- c(127.3, 120.2, 126.2, 125.4, 115.1, 118.5, 135.5, 118.2, 122.9, 120.1, 120.8, 130.7)
+
+wilcox.test(x2, x1, paired = T, alternative = "greater")
+# or
+wilcox.test(x2 - x1, alternative = "greater")
+```
+p-value = 0.04614 --> H0 can be rejected at the 5% significance level. Look at the histogram of (x2 - x1)!
+
+<br>
+
+###Kruskal-Wallis test on equality of medians from two or more independent populations
+```{r }
+x <- c(2.9, 3.0, 2.5, 2.6, 3.2) # normal subjects
+y <- c(3.8, 2.7, 4.0, 2.4, 3.0) # with obstructive airway disease
+z <- c(2.8, 3.4, 3.7, 2.2, 2.0) # with asbestosis
+kruskal.test(list(x, y, z))
+```
+
+<br>
+
+Let's add one more group
+```{r}
+w <- c(2.2, 1.8, 2.1, 1.5, 1.5) # lung cancer subjects
+kruskal.test(list(x, y, z, w))
+```
+
+
+

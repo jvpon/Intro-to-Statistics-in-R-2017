@@ -55,3 +55,11 @@ Module III. Statistical Inference. Power analysis. Part 2. (re-iteration of Part
   - Power of the two-sample t test
   - Calculating power using the package “pwr”
   
+---
+MODULE IV. Statistical inference. Non-parametric tests. Data transformation.
+- QQ-plot
+- Tests on normality
+- Data transformation
+- Non-parametric tests
+
+---

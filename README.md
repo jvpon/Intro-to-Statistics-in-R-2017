@@ -25,3 +25,12 @@ MODULE I. Descriptive Statistics & Intro to Probability.
     - Cumulative Distribution Function (CDF)
     - The 68-95-99.7 rule
     - Quantile function, or How to obtain the critical values of -z and z for a specified area under the standard normal curve.
+
+MODULE II. Statistical Inference. Parametric tests.
+- Parametric tests
+  - One-sample test on the sample mean for the random sample drawn from the normally distributed population with known variance: z-test
+  - One-sample test on the sample mean for the sample with unknown variance: t-test
+  - Two-sample paired and unpaired tests with unknown variance: t-test
+  - Test for proportions: prop.test()
+  - Fisher's exact test on proportions
+- Confidence intervals and t-distribution
